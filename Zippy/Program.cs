@@ -27,14 +27,6 @@ void DatasWriter(IEnumerable<byte[]> datas, string fileName, CompressionLevel Co
     }
 }
 
-void DatasWriterFiles(IEnumerable<byte[]> datas, string fileName)
-{
-    Parallel.For(0, datas.Count(), new ParallelOptions() { MaxDegreeOfParallelism = 20 }, i =>
-    {
-        File.WriteAllBytes($"{fileName}{i}", datas.ElementAt((int)i));
-    });
-}
-
 IEnumerable<byte[]> DatasReader(string fileName)
 {
     var datas = new List<byte[]>();
@@ -44,6 +36,24 @@ IEnumerable<byte[]> DatasReader(string fileName)
 
     return zipArchive.Entries.Select(v => (new BinaryReader(v.Open())).ReadBytes((int)v.Length)).ToArray();
 };
+
+void DatasWriterFiles(IEnumerable<byte[]> datas, string fileName)
+{
+    Parallel.For(0, datas.Count(), new ParallelOptions() { MaxDegreeOfParallelism = 20 }, i =>
+    {
+        File.WriteAllBytes($"{fileName}{i}", datas.ElementAt((int)i));
+    });
+}
+
+IEnumerable<byte[]> DatasReaderFiles(string fileName)
+{
+    var datas = new byte[DATA_COUNT][];
+    Parallel.For(0, DATA_COUNT, new ParallelOptions() { MaxDegreeOfParallelism = 20 }, i =>
+    {
+        datas[i] = File.ReadAllBytes($"{fileName}{i}");
+    });
+    return datas;
+}
 
 void StopWatchBenchmark(Action action, string name)
 {
@@ -63,6 +73,9 @@ StopWatchBenchmark(() => DatasWriterFiles(datas, "Zippy"), "write files");
 IEnumerable<byte[]> readDatas = null;
 StopWatchBenchmark(() => readDatas = DatasReader("ZippyUncompressed.zip"), "read NoCompression");
 
+IEnumerable<byte[]> readFileDatas = null;
+StopWatchBenchmark(() => readFileDatas = DatasReaderFiles("Zippy"), "read files");
+
 StopWatchBenchmark(() =>
 {
     bool datasIsEqual = true;
@@ -71,8 +84,19 @@ StopWatchBenchmark(() =>
         datasIsEqual = Enumerable.SequenceEqual(readDatas?.ElementAt(i) ?? Enumerable.Empty<byte>(), datas[i]);
     }
 
-    Console.WriteLine($"Data sets are equal: {datasIsEqual}");
-}, "data sets compare");
+    Console.WriteLine($"NoCompression data sets are equal: {datasIsEqual}");
+}, "NoCompression data sets compare");
+
+StopWatchBenchmark(() =>
+{
+    bool datasIsEqual = true;
+    for (int i = 0; i < DATA_COUNT && datasIsEqual; i++)
+    {
+        datasIsEqual = Enumerable.SequenceEqual(readFileDatas?.ElementAt(i) ?? Enumerable.Empty<byte>(), datas[i]);
+    }
+
+    Console.WriteLine($"Files data sets are equal: {datasIsEqual}");
+}, "Files data sets compare");
 
 Console.WriteLine("Enter to Exit...");
 Console.ReadLine();
