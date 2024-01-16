@@ -37,6 +37,8 @@ IEnumerable<byte[]> DatasReader(string fileName)
     return zipArchive.Entries.Select(v => (new BinaryReader(v.Open())).ReadBytes((int)v.Length)).ToArray();
 };
 
+void DatasDelete(string fileName) => File.Delete(fileName);
+
 void DatasWriterFiles(IEnumerable<byte[]> datas, string fileName)
 {
     Parallel.For(0, datas.Count(), new ParallelOptions() { MaxDegreeOfParallelism = 20 }, i =>
@@ -53,6 +55,14 @@ IEnumerable<byte[]> DatasReaderFiles(string fileName)
         datas[i] = File.ReadAllBytes($"{fileName}{i}");
     });
     return datas;
+}
+
+void DatasDeleteFiles(string fileName)
+{
+    Parallel.For(0, DATA_COUNT, new ParallelOptions() { MaxDegreeOfParallelism = 20 }, i =>
+    {
+        File.Delete($"{fileName}{i}");
+    });
 }
 
 void StopWatchBenchmark(Action action, string name)
@@ -97,6 +107,9 @@ StopWatchBenchmark(() =>
 
     Console.WriteLine($"Files data sets are equal: {datasIsEqual}");
 }, "Files data sets compare");
+
+StopWatchBenchmark(() => DatasDelete("ZippyUncompressed.zip"), "Delete NoCompression");
+StopWatchBenchmark(() => DatasDeleteFiles("Zippy"), "Delete files");
 
 Console.WriteLine("Enter to Exit...");
 Console.ReadLine();
