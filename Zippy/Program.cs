@@ -1,10 +1,11 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using System.Buffers;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Compression;
 
-const int DATA_SIZE = 50 * 1024;
-const int DATA_COUNT = 50 * 1024;
+const int DATA_SIZE = 130 * 1024;
+const int DATA_COUNT = 5 * 1024;
 
 byte[] NextDataBytes()
 {
@@ -29,8 +30,6 @@ void DatasWriter(IEnumerable<byte[]> datas, string fileName, CompressionLevel Co
 
 IEnumerable<byte[]> DatasReader(string fileName)
 {
-    var datas = new List<byte[]>();
-
     using var zipStream = File.Open(fileName, FileMode.Open);
     using var zipArchive = new ZipArchive(zipStream, ZipArchiveMode.Read);
 
@@ -41,27 +40,27 @@ void DatasDelete(string fileName) => File.Delete(fileName);
 
 void DatasWriterFiles(IEnumerable<byte[]> datas, string fileName)
 {
-    Parallel.For(0, datas.Count(), new ParallelOptions() { MaxDegreeOfParallelism = 20 }, i =>
+    Parallel.For(0, datas.Count(), new ParallelOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount - 1 }, i =>
     {
-        File.WriteAllBytes($"{fileName}{i}", datas.ElementAt((int)i));
+        File.WriteAllBytes($"{fileName}{i}.seq", datas.ElementAt((int)i));
     });
 }
 
 IEnumerable<byte[]> DatasReaderFiles(string fileName)
 {
     var datas = new byte[DATA_COUNT][];
-    Parallel.For(0, DATA_COUNT, new ParallelOptions() { MaxDegreeOfParallelism = 20 }, i =>
+    Parallel.For(0, DATA_COUNT, new ParallelOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount - 1 }, i =>
     {
-        datas[i] = File.ReadAllBytes($"{fileName}{i}");
+        datas[i] = File.ReadAllBytes($"{fileName}{i}.seq");
     });
     return datas;
 }
 
 void DatasDeleteFiles(string fileName)
 {
-    Parallel.For(0, DATA_COUNT, new ParallelOptions() { MaxDegreeOfParallelism = 20 }, i =>
+    Parallel.For(0, DATA_COUNT, new ParallelOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount - 1 }, i =>
     {
-        File.Delete($"{fileName}{i}");
+        File.Delete($"{fileName}{i}.seq");
     });
 }
 
@@ -72,7 +71,7 @@ void StopWatchBenchmark(Action action, string name)
     Console.WriteLine($"Runtime {name}: {sw.ElapsedMilliseconds}mS");
 };
 
-Console.WriteLine("Zippy :-)");
+Console.WriteLine($"Zippy :-) [{DATA_COUNT} x {DATA_SIZE}bytes]");
 
 var datas = Enumerable.Range(0, DATA_COUNT).Select(v => NextDataBytes()).ToArray();
 
